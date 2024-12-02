@@ -63,7 +63,7 @@ class LotteryTracker:
 
     def get_unprocessed_draws(self):
         try:
-            trekking = pd.read_csv('data/trekking.csv')
+            trekking = read_trekking()
             unprocessed = []
             for _, row in trekking.iterrows():
                 draw_date = row['date']
@@ -74,6 +74,19 @@ class LotteryTracker:
         except Exception as e:
             print(f"Error reading trekking.csv: {e}")
             return []
+
+
+def read_trekking():
+    """Read trekking.csv, creating it if it doesn't exist"""
+    os.makedirs('data', exist_ok=True)
+    file_path = 'data/trekking.csv'
+
+    if not os.path.exists(file_path):
+        df = pd.DataFrame(columns=['date'] + [f'number{i}' for i in range(1, 7)])
+        df.to_csv(file_path, index=False)
+        return df
+
+    return pd.read_csv(file_path)
 
 
 def parse_input():
@@ -102,12 +115,16 @@ def parse_input():
 
 
 def add_to_trekking(numbers):
-    trekking = pd.read_csv('data/trekking.csv')
-    last_date = pd.to_datetime(trekking['date'].iloc[-1], format='%d-%b-%y')
-    next_date = last_date + pd.Timedelta(days=7)
+    trekking = read_trekking()
+
+    if trekking.empty:
+        next_date = pd.Timestamp.now().strftime('%d-%b-%y')
+    else:
+        last_date = pd.to_datetime(trekking['date'].iloc[-1], format='%d-%b-%y')
+        next_date = (last_date + pd.Timedelta(days=7)).strftime('%d-%b-%y')
 
     new_row = {
-        'date': next_date.strftime('%d-%b-%y'),
+        'date': next_date,
         'number1': numbers[0],
         'number2': numbers[1],
         'number3': numbers[2],
@@ -224,7 +241,7 @@ def process_all_unprocessed_draws(tracker):
 
 
 def get_latest_results(tracker):
-    trekking = pd.read_csv('data/trekking.csv')
+    trekking = read_trekking()
     if not trekking.empty:
         latest = trekking.iloc[-1]
         numbers = sorted([latest[f'number{i}'] for i in range(1, 7)])
